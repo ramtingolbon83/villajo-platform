@@ -1,16 +1,30 @@
-from django.urls import path
-from rest_framework.urlpatterns import format_suffix_patterns
+from rest_framework.routers import DefaultRouter
 
-from properties.views import (
-    property_create,
-    property_detail,
-    property_list,
+from .views import (
+    AmenityViewSet,
+    CategoryViewSet,
+    CityViewSet,
+    CountryViewSet,
+    CountyViewSet,
+    DistrictViewSet,
+    PropertyImageViewSet,
+    PropertyLocationViewSet,
+    ProvinceViewSet,
+    RuralDistrictViewSet,
 )
 
-urlpatterns = [
-    path("properties/", property_list, name="property-list"),
-    path("properties/create/", property_create, name="property-create"),
-    path("properties/<int:pk>/", property_detail, name="property-detail"),
-]
+router = DefaultRouter()
+router.register("countries", CountryViewSet, basename="country")
+router.register("provinces", ProvinceViewSet, basename="province")
+router.register("counties", CountyViewSet, basename="county")
+router.register("amenities", AmenityViewSet, basename="amenity")
+router.register(
+    "property-locations", PropertyLocationViewSet, basename="property-location"
+)
+router.register("property-images", PropertyImageViewSet, basename="property-image")
+router.register("categories", CategoryViewSet, basename="category")
+router.register("districts", DistrictViewSet, basename="district")
+router.register("rural-districts", RuralDistrictViewSet, basename="rural-district")
+router.register("cities", CityViewSet, basename="city")
 
-urlpatterns = format_suffix_patterns(urlpatterns)
+urlpatterns = router.urls
