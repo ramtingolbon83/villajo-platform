@@ -26,6 +26,7 @@ class PropertyListSerializer(serializers.ModelSerializer):
     property_type_display = serializers.CharField(
         source="get_property_type_display", read_only=True
     )
+
     class Meta:
         model = Property
         fields = (
@@ -64,6 +65,7 @@ class PropertyDetailSerializer(serializers.ModelSerializer):
         model = Property
         fields = (
             "id",
+            "slug",
             "title",
             "description",
             "property_type",
@@ -122,70 +124,106 @@ class PropertyUpdateSerializer(serializers.ModelSerializer):
         )
 
 
-
 class CountrySerializer(serializers.ModelSerializer):
     class Meta:
         model = Country
         fields = ("id", "name", "code", "slug")
-        read_only_fields = ("id",)
+        read_only_fields = ("id", "slug")
 
 
 class ProvinceSerializer(serializers.ModelSerializer):
+    country_name = serializers.CharField(source="country.name", read_only=True)
+
     class Meta:
         model = Province
-        fields = ("id", "name", "code", "slug", "country")
-        read_only_fields = ("id",)
+        fields = ("id", "name", "code", "slug", "country", "country_name")
+        read_only_fields = ("id", "slug")
 
 
 class CountySerializer(serializers.ModelSerializer):
     class Meta:
         model = County
         fields = ("id", "name", "code", "slug", "province")
-        read_only_fields = ("id",)
+        read_only_fields = ("id", "slug")
 
 
 class DistrictSerializer(serializers.ModelSerializer):
     class Meta:
         model = District
         fields = ("id", "name", "code", "slug", "county")
-        read_only_fields = ("id",)
+        read_only_fields = (
+            "id",
+            "slug",
+        )
 
 
 class RuralDistrictSerializer(serializers.ModelSerializer):
     class Meta:
         model = RuralDistrict
         fields = ("id", "name", "code", "slug", "district")
-        read_only_fields = ("id",)
+        read_only_fields = (
+            "id",
+            "slug",
+        )
 
 
 class CitySerializer(serializers.ModelSerializer):
     class Meta:
         model = City
         fields = ("id", "name", "code", "slug", "province", "county", "district")
-        read_only_fields = "id"
+        read_only_fields = (
+            "id",
+            "slug",
+        )
 
+    def validate(self, attrs):
+        province = attrs.get("province") or getattr(self.instance, "province", None)
+        county = attrs.get("county") or getattr(self.instance, "county", None)
+        district = attrs.get("district") or getattr(self.instance, "district", None)
+        if county and province and county.province_id != province.id:
+            raise serializers.ValidationError("شهرستان متعلق به این استان نیست.")
+        if district and county and district.county_id != county.id:
+            raise serializers.ValidationError("بخش متعلق به این شهرستان نیست.")
+        return attrs
 
 class PropertyLocationSerializer(serializers.ModelSerializer):
+    city_name = serializers.CharField(source="city.name", read_only=True)
+
     class Meta:
         model = PropertyLocation
         fields = (
             "id",
+            "property_obj",
+            "city",
+            "city_name",
             "address",
             "postal_code",
             "latitude",
             "longitude",
-            "property_obj",
-            "city",
         )
-        read_only_fields = ("id", "property_obj")
+        read_only_fields = ("id",)
 
+    def validate_property_obj(self, value):
+        if self.instance and self.instance.property_obj != value:
+            raise serializers.ValidationError("تغییر ملک مجاز نیست.")
+        request = self.context["request"]
+        if value.owner != request.user and not request.user.is_staff:
+            raise serializers.ValidationError("این ملک متعلق به شما نیست.")
+        return value
 
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = ("id", "name", "is_active", "slug")
-        read_only_fields = "id"
+        read_only_fields = ("id", "slug")
+
+
+class AmenitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Amenity
+        fields = ("id", "category", "name", "slug", "is_active")
+        read_only_fields = ("id", "slug")
 
 
 class PropertyImageSerializer(serializers.ModelSerializer):
@@ -193,16 +231,29 @@ class PropertyImageSerializer(serializers.ModelSerializer):
         model = PropertyImage
         fields = (
             "id",
+            "property_obj",
             "image",
             "alt_text",
             "is_cover",
             "order",
             "created_at",
             "updated_at",
-            "property_obj",
         )
-        read_only_fields = ("id", "property_obj", "created_at", "updated_at")
+        read_only_fields = ("id", "created_at", "updated_at")
 
+    def validate_property_obj(self, value):
+        if self.instance and self.instance.property_obj != value:
+            raise serializers.ValidationError("تغییر ملک مجاز نیست.")
+        request = self.context["request"]
+        if value.owner != request.user and not request.user.is_staff:
+            raise serializers.ValidationError("این ملک متعلق به شما نیست.")
+        return value
+
+    def validate_image(self, value):
+        max_size = 5 * 1024 * 1024  # 5 MB(MiB)
+        if value.size > max_size:
+            raise serializers.ValidationError("حجم تصویر باید کمتر از ۵ مگابایت باشد.")
+        return value
 
 
 class PropertyRuleSerializer(serializers.ModelSerializer):
@@ -267,7 +318,6 @@ class CancellationRuleSerializer(serializers.ModelSerializer):
             "policy",
         )
         read_only_fields = ("id",)
-
 
 
 class PropertyVerificationSerializer(serializers.ModelSerializer):
