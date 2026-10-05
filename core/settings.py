@@ -9,6 +9,7 @@ https://docs.djangoproject.com/en/6.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
+
 import os
 from pathlib import Path
 
@@ -19,7 +20,7 @@ from unfold_farsi.settings import apply_unfold_farsi_defaults
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR/".env")
+load_dotenv(BASE_DIR / ".env")
 
 
 # Quick-start development settings - unsuitable for production
@@ -29,7 +30,7 @@ load_dotenv(BASE_DIR/".env")
 SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get("DJANGO_DEBUG","False")=="True"
+DEBUG = os.environ.get("DJANGO_DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = []
 
@@ -37,63 +38,63 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
-    'unfold',
-    'unfold.contrib.filters',
-    'unfold.contrib.forms',
-    'unfold.contrib.inlines',
-    'unfold_farsi', 
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'jalali_date',
-    'rest_framework',
+    "unfold",
+    "unfold.contrib.filters",
+    "unfold.contrib.forms",
+    "unfold.contrib.inlines",
+    "unfold_farsi",
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    'django_filters',
+    "jalali_date",
+    "rest_framework",
     "drf_spectacular",
-    'accounts',
-    'bookings',
-    'properties',
-
+    "accounts",
+    "bookings",
+    "properties",
 ]
 
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = 'core.urls'
+ROOT_URLCONF = "core.urls"
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'core.wsgi.application'
+WSGI_APPLICATION = "core.wsgi.application"
 
 
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
     }
 }
 
@@ -103,16 +104,16 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
 
@@ -120,9 +121,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.1/topics/i18n/
 
-LANGUAGE_CODE = 'fa-ir'
+LANGUAGE_CODE = "fa-ir"
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = "UTC"
 
 USE_I18N = True
 
@@ -132,95 +133,142 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = "static/"
 
 
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
 
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 
-UNFOLD = apply_unfold_farsi_defaults( {
-    "SITE_TITLE": "پنل مدیریت",
-    "SITE_HEADER": "پنل مدیریت",
-    "SHOW_HISTORY": True,
-    "SHOW_LANGUAGES": False,
-    "SIDEBAR": {
-        "show_search": True,
-        "show_all_applications": True,
-        "navigation":[
-            {
-            "title":"مدیریت اقامتگاه ها",
-            "separator":False,
-            "collapsible":False,
-            "items":[
-                {"title": "املاک", "icon": "home",
-                "link": reverse_lazy("admin:properties_property_changelist")},            
-                {"title": "کشورها", "icon": "public",            
-                "link": reverse_lazy("admin:properties_country_changelist")},            
-                {"title": "استان‌ها / ایالت‌ها", "icon": "map",            
-                "link": reverse_lazy("admin:properties_province_changelist")},            
-                {"title": "شهرستان‌ها / ناحیه‌ها", "icon": "location_city",            
-                "link": reverse_lazy("admin:properties_county_changelist")},            
-                {"title": "بخش‌ها", "icon": "signpost",            
-                "link": reverse_lazy("admin:properties_district_changelist")},            
-                {"title": "دهستان‌ها / روستاها", "icon": "holiday_village",            
-                "link": reverse_lazy("admin:properties_ruraldistrict_changelist")},            
-                {"title": "شهرها", "icon": "apartment",            
-                "link": reverse_lazy("admin:properties_city_changelist")},            
-                {"title": "امکانات رفاهی", "icon": "pool",            
-                "link": reverse_lazy("admin:properties_amenity_changelist")},            
-                {"title": "دسته‌بندی‌ها", "icon": "category",            
-                "link": reverse_lazy("admin:properties_category_changelist")},            
-                {"title": "قوانین لغو رزرو", "icon": "event_busy",            
-                "link": reverse_lazy("admin:properties_cancellationpolicy_changelist")},
-                {"title": "وضعیت های تایید ملک", "icon": "verified",            
-                "link": reverse_lazy("admin:properties_propertyverification_changelist")},
-            ]
-
-            }
-        ]
+UNFOLD = apply_unfold_farsi_defaults(
+    {
+        "SITE_TITLE": "پنل مدیریت",
+        "SITE_HEADER": "پنل مدیریت",
+        "SHOW_HISTORY": True,
+        "SHOW_LANGUAGES": False,
+        "SIDEBAR": {
+            "show_search": True,
+            "show_all_applications": True,
+            "navigation": [
+                {
+                    "title": "مدیریت اقامتگاه ها",
+                    "separator": False,
+                    "collapsible": False,
+                    "items": [
+                        {
+                            "title": "املاک",
+                            "icon": "home",
+                            "link": reverse_lazy(
+                                "admin:properties_property_changelist"
+                            ),
+                        },
+                        {
+                            "title": "کشورها",
+                            "icon": "public",
+                            "link": reverse_lazy("admin:properties_country_changelist"),
+                        },
+                        {
+                            "title": "استان‌ها / ایالت‌ها",
+                            "icon": "map",
+                            "link": reverse_lazy(
+                                "admin:properties_province_changelist"
+                            ),
+                        },
+                        {
+                            "title": "شهرستان‌ها / ناحیه‌ها",
+                            "icon": "location_city",
+                            "link": reverse_lazy("admin:properties_county_changelist"),
+                        },
+                        {
+                            "title": "بخش‌ها",
+                            "icon": "signpost",
+                            "link": reverse_lazy(
+                                "admin:properties_district_changelist"
+                            ),
+                        },
+                        {
+                            "title": "دهستان‌ها / روستاها",
+                            "icon": "holiday_village",
+                            "link": reverse_lazy(
+                                "admin:properties_ruraldistrict_changelist"
+                            ),
+                        },
+                        {
+                            "title": "شهرها",
+                            "icon": "apartment",
+                            "link": reverse_lazy("admin:properties_city_changelist"),
+                        },
+                        {
+                            "title": "امکانات رفاهی",
+                            "icon": "pool",
+                            "link": reverse_lazy("admin:properties_amenity_changelist"),
+                        },
+                        {
+                            "title": "دسته‌بندی‌ها",
+                            "icon": "category",
+                            "link": reverse_lazy(
+                                "admin:properties_category_changelist"
+                            ),
+                        },
+                        {
+                            "title": "قوانین لغو رزرو",
+                            "icon": "event_busy",
+                            "link": reverse_lazy(
+                                "admin:properties_cancellationpolicy_changelist"
+                            ),
+                        },
+                        {
+                            "title": "وضعیت های تایید ملک",
+                            "icon": "verified",
+                            "link": reverse_lazy(
+                                "admin:properties_propertyverification_changelist"
+                            ),
+                        },
+                    ],
+                }
+            ],
+        },
+        "COLORS": {
+            "base": {
+                "50": "oklch(97.8% .006 60)",
+                "100": "oklch(94.5% .012 55)",
+                "200": "oklch(88.5% .018 50)",
+                "300": "oklch(78% .025 45)",
+                "400": "oklch(64% .03 40)",
+                "500": "oklch(50% .035 38)",
+                "600": "oklch(40% .035 36)",
+                "700": "oklch(32% .03 34)",
+                "800": "oklch(24% .025 32)",
+                "900": "oklch(17% .02 30)",
+                "950": "oklch(11% .015 28)",
+            },
+            "primary": {
+                "50": "oklch(96% .025 195)",
+                "100": "oklch(91% .045 193)",
+                "200": "oklch(83% .07 191)",
+                "300": "oklch(73% .09 189)",
+                "400": "oklch(62% .1 187)",
+                "500": "oklch(52% .095 185)",
+                "600": "oklch(44% .085 184)",
+                "700": "oklch(37% .07 183)",
+                "800": "oklch(30% .055 182)",
+                "900": "oklch(24% .04 181)",
+                "950": "oklch(16% .03 180)",
+            },
+            "font": {
+                "subtle-light": "var(--color-base-500)",
+                "subtle-dark": "var(--color-base-400)",
+                "default-light": "var(--color-base-700)",
+                "default-dark": "var(--color-base-200)",
+                "important-light": "var(--color-base-900)",
+                "important-dark": "var(--color-base-50)",
+            },
+        },
     },
-    "COLORS": {
-        "base": {
-            "50": "oklch(97.8% .006 60)",
-            "100": "oklch(94.5% .012 55)",
-            "200": "oklch(88.5% .018 50)",
-            "300": "oklch(78% .025 45)",
-            "400": "oklch(64% .03 40)",
-            "500": "oklch(50% .035 38)",
-            "600": "oklch(40% .035 36)",
-            "700": "oklch(32% .03 34)",
-            "800": "oklch(24% .025 32)",
-            "900": "oklch(17% .02 30)",
-            "950": "oklch(11% .015 28)",
-        },
-        "primary": {
-            "50": "oklch(96% .025 195)",
-            "100": "oklch(91% .045 193)",
-            "200": "oklch(83% .07 191)",
-            "300": "oklch(73% .09 189)",
-            "400": "oklch(62% .1 187)",
-            "500": "oklch(52% .095 185)",
-            "600": "oklch(44% .085 184)",
-            "700": "oklch(37% .07 183)",
-            "800": "oklch(30% .055 182)",
-            "900": "oklch(24% .04 181)",
-            "950": "oklch(16% .03 180)",
-        },
-        "font": {
-            "subtle-light": "var(--color-base-500)",
-            "subtle-dark": "var(--color-base-400)",
-            "default-light": "var(--color-base-700)",
-            "default-dark": "var(--color-base-200)",
-            "important-light": "var(--color-base-900)",
-            "important-dark": "var(--color-base-50)",
-        },
-    },
-},
- static=static,
+    static=static,
 )
 JALALI_DATE_DEFAULTS = {
     "LIST_DISPLAY_AUTO_CONVERT": True,
@@ -232,4 +280,10 @@ JALALI_DATE_DEFAULTS = {
 
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_FILTER_BACKENDS": [
+        "django_filters.rest_framework.DjangoFilterBackend",
+    ],
 }
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
