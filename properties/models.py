@@ -2,8 +2,8 @@ from django.core.validators import MinValueValidator
 from django.db import IntegrityError, models, transaction
 from django.utils.text import slugify
 
-ACCOMMODATION='اقامتگاه'
-REGULATION ='قانون'
+ACCOMMODATION = "اقامتگاه"
+REGULATION = "قانون"
 
 # ==================================================
 #                  Abstract Base Model
@@ -12,7 +12,9 @@ REGULATION ='قانون'
 
 
 class SluggedModel(models.Model):
-    slug = models.SlugField(unique=True,allow_unicode=True,blank=True,verbose_name="اسلاگ")
+    slug = models.SlugField(
+        unique=True, allow_unicode=True, blank=True, verbose_name="اسلاگ"
+    )
 
     class Meta:
         abstract = True
@@ -21,7 +23,7 @@ class SluggedModel(models.Model):
         source = getattr(self, "name", None) or getattr(self, "title", None)
         if not source:
             return None
-        base_slug = slugify(source,allow_unicode=True)
+        base_slug = slugify(source, allow_unicode=True)
         slug = base_slug
         counter = 1
         while self.__class__.objects.filter(slug=slug).exists():
@@ -80,7 +82,6 @@ class GeneralRule(models.TextChoices):
 #     Key Accommodation Information
 # ==================================================
 class Property(SluggedModel):
-        
     PROPERTY_TYPE_CHOICES = (
         ("villa", "ویلا"),
         ("cottage", "کلبه"),
@@ -89,7 +90,9 @@ class Property(SluggedModel):
         ("house", "خانه"),
         ("eco_lodge", "بوم‌گردی"),
     )
-    amenities = models.ManyToManyField("Amenity",related_name="properties",blank=True,verbose_name="امکانات رفاهی")
+    amenities = models.ManyToManyField(
+        "Amenity", related_name="properties", blank=True, verbose_name="امکانات رفاهی"
+    )
     # Identity
     title = models.CharField(max_length=150, verbose_name="عنوان")
 
@@ -154,7 +157,7 @@ class Property(SluggedModel):
         null=True, blank=True, verbose_name="تاریخ انتشار "
     )
 
-    class Meta: 
+    class Meta:
         verbose_name = "ملک"
         verbose_name_plural = "املاک"
 
@@ -167,15 +170,16 @@ class Property(SluggedModel):
 # ===================================================
 class Country(SluggedModel):
     # Identity
-    name = models.CharField(max_length=60, verbose_name="نام کشور")
-    code = models.CharField(max_length=6, verbose_name="کد کشور")
+    name = models.CharField(max_length=60, verbose_name="نام کشور", unique=True)
+    code = models.CharField(max_length=6, verbose_name="کد کشور", unique=True)
 
-    class Meta: 
+    class Meta:
         verbose_name = "کشور"
-        verbose_name_plural ="کشور ها"
-    
+        verbose_name_plural = "کشور ها"
+
     def __str__(self):
         return self.name
+
 
 class Province(SluggedModel):
     # Relationship
@@ -183,15 +187,22 @@ class Province(SluggedModel):
         Country, on_delete=models.CASCADE, related_name="provinces", verbose_name="کشور"
     )
     # Identity
-    name = models.CharField(max_length=25, verbose_name="نام استان")
+    name = models.CharField(max_length=200, verbose_name="نام استان")
     code = models.CharField(max_length=6, verbose_name="کد استان")
 
-    class Meta: 
-        verbose_name = "استان/ایالت "
+    class Meta:
+        verbose_name = "استان/ایالت"
         verbose_name_plural = "استان ها / ایالت ها"
-    
+        constraints = [  # noqa: RUF012
+            models.UniqueConstraint(
+                fields=["country", "code"],
+                name="unique_province_code_per_country",
+            )
+        ]
+
     def __str__(self):
         return self.name
+
 
 class County(SluggedModel):
     # Relationship
@@ -202,13 +213,19 @@ class County(SluggedModel):
         verbose_name="استان",
     )
     # Identity
-    name = models.CharField(max_length=20, verbose_name="نام شهرستان")
+    name = models.CharField(max_length=200, verbose_name="نام شهرستان")
     code = models.CharField(max_length=6, verbose_name="کد شهرستان")
 
-    class Meta: 
+    class Meta:
         verbose_name = "شهرستان/ناحیه"
-        verbose_name_plural ="شهرستان ها/ناحیه ها"
-    
+        verbose_name_plural = "شهرستان ها/ناحیه ها"
+        constraints = (
+            models.UniqueConstraint(
+                fields=["province", "code"],
+                name="unique_county_code_per_province",
+            ),
+        )
+
     def __str__(self):
         return self.name
 
@@ -222,13 +239,13 @@ class District(SluggedModel):
         verbose_name="شهرستان",
     )
     # Identity
-    name = models.CharField(max_length=35, verbose_name="نام بخش")
+    name = models.CharField(max_length=200, verbose_name="نام بخش")
     code = models.CharField(max_length=6, verbose_name="کد بخش")
 
-    class Meta: 
+    class Meta:
         verbose_name = "بخش"
         verbose_name_plural = "بخش ها"
-    
+
     def __str__(self):
         return self.name
 
@@ -242,13 +259,13 @@ class RuralDistrict(SluggedModel):
         verbose_name="بخش",
     )
     # Identity
-    name = models.CharField(max_length=50, verbose_name="نام دهستان")
+    name = models.CharField(max_length=200, verbose_name="نام دهستان")
     code = models.CharField(max_length=6, verbose_name="کد دهستان")
 
-    class Meta: 
+    class Meta:
         verbose_name = "دهستان/روستا"
         verbose_name_plural = "دهستان ها/روستا ها"
-    
+
     def __str__(self):
         return self.name
 
@@ -265,14 +282,13 @@ class City(SluggedModel):
         District, on_delete=models.CASCADE, related_name="cities", verbose_name="بخش"
     )
     # Identity
-    name = models.CharField(max_length=50, verbose_name="نام شهر")
+    name = models.CharField(max_length=200, verbose_name="نام شهر")
     code = models.CharField(max_length=6, verbose_name="کد شهر")
 
-    class Meta: 
+    class Meta:
         verbose_name = "شهر"
         verbose_name_plural = "شهر ها"
-    
-    
+
     def __str__(self):
         return self.name
 
@@ -291,7 +307,7 @@ class PropertyLocation(models.Model):
     )
     # Address
     address = models.CharField(
-        max_length=350, null=True, blank=True, verbose_name="آدرس تکمیلی"
+        max_length=350, blank=True, verbose_name="آدرس تکمیلی"
     )
     postal_code = models.CharField(max_length=10, verbose_name="کد پستی")
 
@@ -311,12 +327,14 @@ class Category(SluggedModel):
     name = models.CharField(max_length=200, verbose_name="نام طبقه بندی")
     is_active = models.BooleanField(default=False, verbose_name="وضعیت")
 
-    class Meta: 
+    class Meta:
         verbose_name = "دسته بندی"
         verbose_name_plural = "مدیریت دسته بندی ها"
-        
+
     def __str__(self):
         return self.name
+
+
 class Amenity(SluggedModel):
     # Relationship
     category = models.ForeignKey(
@@ -332,25 +350,24 @@ class Amenity(SluggedModel):
     # Status
     is_active = models.BooleanField(default=False, verbose_name="وضعیت")
 
-    class Meta: 
+    class Meta:
         verbose_name = "امکانات رفاهی"
-        verbose_name_plural = "مدیریت امکانات رفاهی" 
-        
+        verbose_name_plural = "مدیریت امکانات رفاهی"
+
     def __str__(self):
         return self.name
+
 
 # ==================================================
 #                       Images
 # ==================================================
 class PropertyImage(models.Model):
-
     # Relationship
     property_obj = models.ForeignKey(
         Property,
         on_delete=models.CASCADE,
         related_name="images",
         verbose_name=ACCOMMODATION,
-        
     )
 
     # Image
@@ -366,6 +383,18 @@ class PropertyImage(models.Model):
     updated_at = models.DateTimeField(
         auto_now=True, verbose_name="تاریخ اخرین بروزرسانی"
     )
+
+    class Meta:
+        verbose_name = "تصویر ملک"
+        verbose_name_plural = "تصاویر ملک‌ها"
+        ordering = ("order", "id")
+        constraints = [  # noqa: RUF012
+            models.UniqueConstraint(
+                fields=["property_obj"],
+                condition=models.Q(is_cover=True),
+                name="unique_cover_per_property",
+            )
+        ]
 
     def __str__(self):
         return f"{self.property_obj} - {self.order}"
@@ -410,7 +439,6 @@ class PermissionRule(models.Model):
 
 
 class TimeRule(models.Model):
-
     # Relation
     rule = models.OneToOneField(
         PropertyRule,
@@ -425,7 +453,6 @@ class TimeRule(models.Model):
 
 
 class QuantityRule(models.Model):
-
     # Relation
     rule = models.OneToOneField(
         PropertyRule,
@@ -444,7 +471,6 @@ class QuantityRule(models.Model):
 #               Cancellation Policies
 # ===================================================
 class CancellationPolicy(SluggedModel):
-
     # Relations
     property_obj = models.ForeignKey(
         Property,
@@ -467,12 +493,13 @@ class CancellationPolicy(SluggedModel):
     updated_at = models.DateTimeField(
         auto_now=True, verbose_name="تاریخ و زمان آخرین بروزرسانی"
     )
-    class Meta: 
-            verbose_name = "سیاست لغو"
-            verbose_name_plural = "قوانین لغو رزرو" 
-            
+
+    class Meta:
+        verbose_name = "سیاست لغو"
+        verbose_name_plural = "قوانین لغو رزرو"
+
     def __str__(self):
-            return self.title
+        return self.title
 
 
 class CancellationRule(models.Model):
@@ -531,7 +558,6 @@ class PropertyVerification(models.Model):
         null=True, blank=True, verbose_name="تاریخ و زمان تأیید"
     )
 
-    
     # verified_by = models.ForeignKey()
 
     # Rejection
@@ -551,11 +577,11 @@ class PropertyVerification(models.Model):
     updated_at = models.DateTimeField(
         auto_now=True, verbose_name="تاریخ و زمان آخرین بروزرسانی"
     )
-    class Meta: 
+
+    class Meta:
         verbose_name = "وضعیت تایید ملک"
         verbose_name_plural = "وضعیت های تایید ملک"
         ordering = ("-created_at",)
-                
+
     def __str__(self):
         return f"{self.property_obj}-{self.get_status_display()}"
-    
