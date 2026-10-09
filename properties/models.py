@@ -306,9 +306,7 @@ class PropertyLocation(models.Model):
         City, on_delete=models.CASCADE, related_name="properties", verbose_name="شهر"
     )
     # Address
-    address = models.CharField(
-        max_length=350, blank=True, verbose_name="آدرس تکمیلی"
-    )
+    address = models.CharField(max_length=350, blank=True, verbose_name="آدرس تکمیلی")
     postal_code = models.CharField(max_length=10, verbose_name="کد پستی")
 
     # Geographic Coordinates
@@ -424,6 +422,25 @@ class PropertyRule(models.Model):
         verbose_name="نوع قانون",
     )
 
+    class Meta:
+        verbose_name = "قانون ملک"
+        verbose_name_plural = "قوانین ملک"
+        constraints = (
+            models.UniqueConstraint(
+                fields=["property_obj", "rule_key", "amenity"],
+                condition=models.Q(amenity__isnull=False),
+                name="unique_rule_per_property_amenity",
+            ),
+            models.UniqueConstraint(
+                fields=["property_obj", "rule_key"],
+                condition=models.Q(amenity__isnull=True),
+                name="unique_general_rule_per_property",
+            ),
+        )
+
+    def __str__(self):
+        return f"{self.property_obj} - {self.rule_key}"
+
 
 class PermissionRule(models.Model):
     # Relation
@@ -437,6 +454,11 @@ class PermissionRule(models.Model):
     # Value
     allowed = models.BooleanField(default=False, verbose_name="مجوز")
 
+    class Meta:
+        verbose_name = "مجوز قانون"
+        verbose_name_plural ="مجوز قوانین"
+    def __str__(self):
+        return f"{self.rule}"
 
 class TimeRule(models.Model):
     # Relation
@@ -451,6 +473,12 @@ class TimeRule(models.Model):
     start_time = models.TimeField()
     end_time = models.TimeField()
 
+    class Meta:
+        verbose_name = ""
+        verbose_name_plural =""
+    def __str__(self):
+        return f"{self.rule}"
+    
 
 class QuantityRule(models.Model):
     # Relation
@@ -466,6 +494,12 @@ class QuantityRule(models.Model):
         null=True, blank=True, verbose_name="تعداد مجاز"
     )
 
+    class Meta:
+        verbose_name = "مجوز قانون"
+        verbose_name_plural ="مجوز قوانین"
+    def __str__(self):
+        return f"{self.rule}"
+    
 
 # ===================================================
 #               Cancellation Policies
@@ -558,7 +592,7 @@ class PropertyVerification(models.Model):
         null=True, blank=True, verbose_name="تاریخ و زمان تأیید"
     )
 
-    # verified_by = models.ForeignKey()
+    #verified_by
 
     # Rejection
     rejection_reason = models.TextField(
