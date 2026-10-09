@@ -21,6 +21,13 @@ from .models import (
     TimeRule,
 )
 
+PROPERTY_CHANGE_NOT_ALLOWED = "تغییر ملک مجاز نیست."
+PROPERTY_NOT_OWNED = "این ملک متعلق به شما نیست."
+
+
+CHANGING_THE_LAW_IS_NOT_PERMITTED = "تغییر قانون مجاز نیست"
+THIS_LAW_DOES_NOT_BELONG_TO_YOU = "این قانون متعلق به شما نیست"
+
 
 class PropertyListSerializer(serializers.ModelSerializer):
     property_type_display = serializers.CharField(
@@ -186,6 +193,7 @@ class CitySerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("بخش متعلق به این شهرستان نیست.")
         return attrs
 
+
 class PropertyLocationSerializer(serializers.ModelSerializer):
     city_name = serializers.CharField(source="city.name", read_only=True)
 
@@ -205,10 +213,10 @@ class PropertyLocationSerializer(serializers.ModelSerializer):
 
     def validate_property_obj(self, value):
         if self.instance and self.instance.property_obj != value:
-            raise serializers.ValidationError("تغییر ملک مجاز نیست.")
+            raise serializers.ValidationError(PROPERTY_CHANGE_NOT_ALLOWED)
         request = self.context["request"]
         if value.owner != request.user and not request.user.is_staff:
-            raise serializers.ValidationError("این ملک متعلق به شما نیست.")
+            raise serializers.ValidationError(PROPERTY_NOT_OWNED)
         return value
 
 
@@ -243,10 +251,10 @@ class PropertyImageSerializer(serializers.ModelSerializer):
 
     def validate_property_obj(self, value):
         if self.instance and self.instance.property_obj != value:
-            raise serializers.ValidationError("تغییر ملک مجاز نیست.")
+            raise serializers.ValidationError(PROPERTY_CHANGE_NOT_ALLOWED)
         request = self.context["request"]
         if value.owner != request.user and not request.user.is_staff:
-            raise serializers.ValidationError("این ملک متعلق به شما نیست.")
+            raise serializers.ValidationError(PROPERTY_NOT_OWNED)
         return value
 
     def validate_image(self, value):
@@ -262,12 +270,47 @@ class PropertyRuleSerializer(serializers.ModelSerializer):
         fields = ("id", "rule_key", "property_obj", "amenity")
         read_only_fields = ("id",)
 
+    def validate_property_obj(self, value):
+        if self.instance and self.instance.property_obj != value:
+            raise serializers.ValidationError(PROPERTY_CHANGE_NOT_ALLOWED)
+        request = self.context["request"]
+        if value.owner != request.user and not request.user.is_staff:
+            raise serializers.ValidationError(PROPERTY_NOT_OWNED)
+        return value
+
+    def validate(self, attrs):
+        prop = attrs.get("property_obj") or self.instance.property_obj
+        amenity = attrs.get("amenity", getattr(self.instance, "amenity", None))
+        rule_key = attrs.get("rule_key ", getattr(self.instance, "rule_key", None))
+
+        if amenity and not prop.amenities.filter(pk=amenity.pk).exists():
+            raise serializers.ValidationError(
+                {"amenity": "این امکانات برای این ملک ثبت نشده است! "}
+            )
+        duplicates = PropertyRule.objects.filter(
+            property_obj=prop, rule_key=rule_key, amenity=amenity
+        )
+        if self.instance:
+            duplicates = duplicates.exclude(pk=self.instance.pk)
+        if duplicates.exists():
+            raise serializers.ValidationError("این قانون برای این ملک قبلا ثبت شده است")
+        return attrs
+
 
 class PermissionRuleSerializer(serializers.ModelSerializer):
     class Meta:
         model = PermissionRule
         fields = ("id", "allowed", "rule")
         read_only_fields = ("id",)
+
+    def validate_rule(self, value):
+        if self.instance and self.instance.rule != value:
+            raise serializers.ValidationError(CHANGING_THE_LAW_IS_NOT_PERMITTED)
+
+        request = self.context["request"]
+        if value.property_obj.owner != request.user and not request.user.is_staff:
+            raise serializers.ValidationError(THIS_LAW_DOES_NOT_BELONG_TO_YOU)
+        return value
 
 
 class TimeRuleSerializer(serializers.ModelSerializer):
@@ -276,12 +319,37 @@ class TimeRuleSerializer(serializers.ModelSerializer):
         fields = ("id", "start_time", "end_time", "rule")
         read_only_fields = ("id",)
 
+    def validate_rule(self, value):
+        if self.instance and self.instance.rule != value:
+            raise serializers.ValidationError(CHANGING_THE_LAW_IS_NOT_PERMITTED)
+
+        request = self.context["request"]
+        if value.property_obj.owner != request.user and not request.user.is_staff:
+            raise serializers.ValidationError(THIS_LAW_DOES_NOT_BELONG_TO_YOU)
+        return value
+
+    def validate(self, attrs):
+        start = attrs.get("start_time", getattr(self.instance, "start_time", None))
+        end = attrs.get("end_time", getattr(self.instance, "end_time", None))
+        if start and end and start == end:
+            raise serializers.ValidationError("ساعت شروع و پایان نمیتواند یکسان باشند")
+        return attrs
+
 
 class QuantityRuleSerializer(serializers.ModelSerializer):
     class Meta:
         model = QuantityRule
         fields = ("id", "value", "rule")
         read_only_fields = ("id",)
+
+    def validate_rule(self, value):
+        if self.instance and self.instance.rule != value:
+            raise serializers.ValidationError(CHANGING_THE_LAW_IS_NOT_PERMITTED)
+
+        request = self.context["request"]
+        if value.property_obj.owner != request.user and not request.user.is_staff:
+            raise serializers.ValidationError(THIS_LAW_DOES_NOT_BELONG_TO_YOU)
+        return value
 
 
 class CancellationPolicySerializer(serializers.ModelSerializer):

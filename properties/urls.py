@@ -7,10 +7,14 @@ from .views import (
     CountryViewSet,
     CountyViewSet,
     DistrictViewSet,
+    PermissionRuleViewSet,
     PropertyImageViewSet,
     PropertyLocationViewSet,
+    PropertyRuleViewSet,
     ProvinceViewSet,
+    QuantityRuleViewSet,
     RuralDistrictViewSet,
+    TimeRuleViewSet,
 )
 
 router = DefaultRouter()
@@ -26,5 +30,9 @@ router.register("categories", CategoryViewSet, basename="category")
 router.register("districts", DistrictViewSet, basename="district")
 router.register("rural-districts", RuralDistrictViewSet, basename="rural-district")
 router.register("cities", CityViewSet, basename="city")
+router.register("property-rules",PropertyRuleViewSet,basename="property-rule")
+router.register("permission-rules",PermissionRuleViewSet,basename="permission-rule")
+router.register("time-rules",TimeRuleViewSet,basename="time-rule")
+router.register("quantity-rules",QuantityRuleViewSet,basename="quantity-rule")
 
 urlpatterns = router.urls

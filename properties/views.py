@@ -11,11 +11,15 @@ from properties.models import (
     Country,
     County,
     District,
+    PermissionRule,
     Property,
     PropertyImage,
     PropertyLocation,
+    PropertyRule,
     Province,
+    QuantityRule,
     RuralDistrict,
+    TimeRule,
 )
 from properties.permission import IsAdminOrReadOnly, IsPropertyOwnerOrReadOnly
 from properties.serializers import (
@@ -25,14 +29,18 @@ from properties.serializers import (
     CountrySerializer,
     CountySerializer,
     DistrictSerializer,
+    PermissionRuleSerializer,
     PropertyCreateSerializer,
     PropertyDetailSerializer,
     PropertyImageSerializer,
     PropertyListSerializer,
     PropertyLocationSerializer,
+    PropertyRuleSerializer,
     PropertyUpdateSerializer,
     ProvinceSerializer,
+    QuantityRuleSerializer,
     RuralDistrictSerializer,
+    TimeRuleSerializer,
 )
 
 
@@ -85,6 +93,7 @@ def property_detail(request, pk):
         properties.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+
 class PropertyViewSet(viewsets.ModelViewSet):
     queryset = Property.objects.prefetch_related("amenities")
     permission_classes = (IsAdminOrReadOnly,)  # موقت تا آماده شدن owner
@@ -96,12 +105,12 @@ class PropertyViewSet(viewsets.ModelViewSet):
             "create": PropertyCreateSerializer,
         }.get(self.action, PropertyUpdateSerializer)
 
+
 class CountryViewSet(viewsets.ModelViewSet):
     queryset = Country.objects.all()
     serializer_class = CountrySerializer
     permission_classes = (IsAdminOrReadOnly,)
 
-    
 
 class ProvinceViewSet(viewsets.ModelViewSet):
     queryset = Province.objects.all()
@@ -109,16 +118,12 @@ class ProvinceViewSet(viewsets.ModelViewSet):
     filterset_fields = ("country",)
     permission_classes = (IsAdminOrReadOnly,)
 
-    
-
 
 class CountyViewSet(viewsets.ModelViewSet):
     queryset = County.objects.all()
     serializer_class = CountySerializer
     filterset_fields = ("province",)
     permission_classes = (IsAdminOrReadOnly,)
-
-    
 
 
 class DistrictViewSet(viewsets.ModelViewSet):
@@ -185,4 +190,40 @@ class PropertyImageViewSet(viewsets.ModelViewSet):
     permission_classes = (IsAuthenticatedOrReadOnly, IsPropertyOwnerOrReadOnly)
 
 
+class PropertyRuleViewSet(viewsets.ModelViewSet):
+    queryset = PropertyRule.objects.select_related("property_obj", "amenity")
+    serializer_class = PropertyRuleSerializer
+    filterset_fields = ("property_obj", "rule_key")
+    permission_classes = (
+        IsAdminOrReadOnly,
+    )  # Temporary (until the 'owners' section is ready)
 
+
+class PermissionRuleViewSet(viewsets.ModelViewSet):
+    queryset = PermissionRule.objects.select_related("rule")
+    serializer_class = PermissionRuleSerializer
+    filterset_fields = ("rule", "allowed")
+    permission_classes = (
+        IsAdminOrReadOnly,
+    )  # Temporary (until the 'owners' section is ready)
+
+
+class TimeRuleViewSet(viewsets.ModelViewSet):
+    queryset = TimeRule.objects.select_related("rule")
+    serializer_class = TimeRuleSerializer
+    filterset_fields = ("rule",)
+    permission_classes = (
+        IsAdminOrReadOnly,
+    )  # Temporary (until the 'owners' section is ready)
+
+
+class QuantityRuleViewSet(viewsets.ModelViewSet):
+    queryset = QuantityRule.objects.select_related("rule")
+    serializer_class = QuantityRuleSerializer
+    filterset_fields = (
+        "rule",
+        "value",
+    )
+    permission_classes = (
+        IsAdminOrReadOnly,
+    )  # Temporary (until the 'owners' section is ready)
