@@ -53,9 +53,12 @@ INSTALLED_APPS = [
     "jalali_date",
     "rest_framework",
     "drf_spectacular",
+    "django.contrib.postgres",
     "accounts",
     "bookings",
     "properties",
+    "pyments",
+    "reviews",
 ]
 
 MIDDLEWARE = [
