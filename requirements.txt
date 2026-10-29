@@ -28,3 +28,4 @@ sqlparse==0.6.0
 tzdata==2026.3
 uritemplate==4.2.0
 urllib3==2.8.0
+psycopg[binary]>=3.1
