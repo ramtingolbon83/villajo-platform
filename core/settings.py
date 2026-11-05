@@ -57,7 +57,6 @@ INSTALLED_APPS = [
     "accounts",
     "bookings",
     "properties",
-    "pyments",
     "reviews",
 ]
 
