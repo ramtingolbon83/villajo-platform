@@ -9,6 +9,7 @@ django-smart-selects==1.7.2
 django-unfold==0.105.0
 django-unfold-farsi==0.1.2
 djangorestframework==3.18.0
+djangorestframework_simplejwt==5.5.1
 drf-spectacular==0.30.0
 idna==3.20
 inflection==0.5.1
@@ -17,6 +18,9 @@ jdatetime==6.1.0
 jsonschema==4.26.0
 jsonschema-specifications==2025.9.1
 pillow==12.3.0
+psycopg==3.3.6
+psycopg-binary==3.3.6
+PyJWT==2.15.1
 python-dotenv==1.2.3
 PyYAML==6.0.3
 referencing==0.37.0
