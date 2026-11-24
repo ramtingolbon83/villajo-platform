@@ -57,6 +57,9 @@ INSTALLED_APPS = [
     "accounts",
     "bookings",
     "properties",
+feature/booking-model
+    "payments",
+ main
     "reviews",
 ]
 
