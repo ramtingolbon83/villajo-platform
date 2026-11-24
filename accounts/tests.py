@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from properties.models import Property
+from properties.models import AccommodationType, Property
 
 from .models import (
     Account,
@@ -32,11 +32,19 @@ def make_user(email, role=Account.Role.CUSTOMER, **extra):
 
 
 def make_property(owner, title="Test Villa", **extra):
+    accommodation_type, _ = AccommodationType.objects.get_or_create(
+        code="villa",
+        defaults={
+            "name": "Villa",
+            "name_en": "Villa",
+        },
+    )
+
     values = {
         "owner": owner,
         "title": title,
         "description": "desc",
-        "accommodation_type": "villa",
+        "accommodation_type": accommodation_type,
         "max_guests": 4,
         "bedrooms": 2,
         "beds": 3,
@@ -46,10 +54,9 @@ def make_property(owner, title="Test Villa", **extra):
         "status": "published",
         "is_active": True,
     }
+
     values.update(extra)
     return Property.objects.create(**values)
-
-
 def results(response):
     """Works with or without pagination."""
     data = response.data
