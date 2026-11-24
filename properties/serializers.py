@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from accounts.models import Account
+
 from .models import (
     Amenity,
     CancellationPolicy,
@@ -47,6 +49,7 @@ class PropertyListSerializer(serializers.ModelSerializer):
             "bathrooms",
             "building_area",
             "land_area",
+            "nightly_price",
         )
 
 
@@ -62,10 +65,12 @@ class AmenityNestedSerializer(serializers.ModelSerializer):
 
 
 class PropertyDetailSerializer(serializers.ModelSerializer):
+    # Visible only to the owner and admins (public visibility is still D-12)
+    PRIVATE_FIELDS = ("owner", "status", "is_active", "verification_status")
+
     property_type_display = serializers.CharField(
         source="get_property_type_display", read_only=True
     )
-
     amenities = AmenityNestedSerializer(many=True, read_only=True)
 
     class Meta:
@@ -73,6 +78,7 @@ class PropertyDetailSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "slug",
+            "owner",
             "title",
             "description",
             "property_type",
@@ -86,19 +92,44 @@ class PropertyDetailSerializer(serializers.ModelSerializer):
             "building_area",
             "land_area",
             "floor",
+            "nightly_price",
             "status",
+            "is_active",
             "verification_status",
             "created_at",
             "updated_at",
             "published_at",
         )
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        user = getattr(self.context.get("request"), "user", None)
+        can_see_private = bool(
+            user
+            and user.is_authenticated
+            and (
+                user.is_superuser
+                or user.role == Account.Role.ADMIN
+                or instance.owner_id == user.id
+            )
+        )
+        if not can_see_private:
+            for field in self.PRIVATE_FIELDS:
+                data.pop(field, None)
+        return data
+
 
 class PropertyCreateSerializer(serializers.ModelSerializer):
+    # Used by admins only; for owners the server sets it from the logged-in user
+    owner = serializers.PrimaryKeyRelatedField(
+        queryset=Account.objects.filter(role=Account.Role.OWNER, is_active=True),
+        required=False,
+    )
+
     class Meta:
         model = Property
-
         fields = (
+            "owner",
             "title",
             "description",
             "property_type",
@@ -111,6 +142,7 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
             "building_area",
             "land_area",
             "floor",
+            "nightly_price",
         )
 
 
@@ -127,7 +159,10 @@ class PropertyUpdateSerializer(serializers.ModelSerializer):
             "beds",
             "bathrooms",
             "toilets",
+            "building_area",
+            "land_area",
             "floor",
+            "nightly_price",
         )
 
 
@@ -281,7 +316,7 @@ class PropertyRuleSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         prop = attrs.get("property_obj") or self.instance.property_obj
         amenity = attrs.get("amenity", getattr(self.instance, "amenity", None))
-        rule_key = attrs.get("rule_key ", getattr(self.instance, "rule_key", None))
+        rule_key = attrs.get("rule_key", getattr(self.instance, "rule_key", None))
 
         if amenity and not prop.amenities.filter(pk=amenity.pk).exists():
             raise serializers.ValidationError(

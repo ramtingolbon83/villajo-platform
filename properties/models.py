@@ -1,6 +1,10 @@
-from django.core.validators import MinValueValidator
+from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator, validate_slug
 from django.db import IntegrityError, models, transaction
 from django.utils.text import slugify
+
+from accounts.models import TimeStampedModel
 
 ACCOMMODATION = "اقامتگاه"
 REGULATION = "قانون"
@@ -78,27 +82,115 @@ class GeneralRule(models.TextChoices):
     EVENT = "event", "برگزاری مراسم"
 
 
+class AccommodationType(SluggedModel, TimeStampedModel):
+    parent = models.ForeignKey(
+        "self",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="children",
+        verbose_name="نوع بالادستی ",
+    )
+    name = models.CharField(max_length=150, verbose_name="نام فارسی")
+    name_en = models.CharField(max_length=150, verbose_name="نام انگلیسی")
+    code = models.SlugField(
+        max_length=100, unique=True, allow_unicode=False, verbose_name="شناسه پایدار"
+    )
+    description = models.TextField(blank=True, verbose_name="توضیحات")
+    is_active = models.BooleanField(default=True, db_index=True, verbose_name="فعال")
+    sort_order = models.PositiveIntegerField(default=0, verbose_name="ترتیب نمایش")
+
+    class Meta:
+        verbose_name = "نوع اقامتگاه"
+        verbose_name_plural = "نوع‌های اقامتگاه"
+        ordering = ("sort_order", "name", "id")
+
+    def clean(self):
+        super().clean()
+        if self.parent_id is None:
+            return
+        if self.pk and self.parent_id == self.pk:
+            raise ValidationError(
+                {"parent": "یک نوع اقامتگاه نمی تواند والد خودش باشد "}
+            )
+        ancestor = self.parent
+        visited_ids = set()
+        while ancestor is not None:
+            if self.pk and ancestor.pk == self.pk:
+                raise ValidationError(
+                    {"parent": "نمی توان یک زیر شاخه را به عنوان والد انتخاب کرد"}
+                )
+            if ancestor.pk in visited_ids:
+                raise ValidationError({"parent": "ساختار والدها از پیش دارای چرخه است"})
+            visited_ids.add(ancestor.pk)
+            ancestor = ancestor.parent
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            original_code = (
+                type(self)
+                .objects.filter(pk=self.pk)
+                .values_list("code", flat=True)
+                .first()
+            )
+            if original_code is not None and original_code != self.code:
+                raise ValidationError(
+                    {"code": "شناسه پایدار نوع اقامتگاه پس از ایجاد قابل تغییر نیست"}
+                )
+        if self.code != self.code.lower():
+            raise ValidationError(
+                {"code": "شناسه پایدار باید با حروف کوچک انگلیسی نوشته شود"}
+            )
+
+        try:
+            validate_slug(self.code)
+        except ValidationError as exc:
+            raise ValidationError(
+                {"code": "شناسه پایدار باید یک slug معتبر انگلیسی باشد"}
+            ) from exc
+
+        self.clean()
+
+        return super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+
 # ==================================================
 #     Key Accommodation Information
 # ==================================================
-class Property(SluggedModel):
-    PROPERTY_TYPE_CHOICES = (
-        ("villa", "ویلا"),
-        ("cottage", "کلبه"),
-        ("apartment", "آپارتمان"),
-        ("suite", "سوئیت"),
-        ("house", "خانه"),
-        ("eco_lodge", "بوم‌گردی"),
+class Property(SluggedModel, TimeStampedModel):
+    STATUS_CHOICES = (
+        ("draft", "پیش نویس"),
+        ("pending_review", "در انتظار بررسی"),
+        ("published", "منتشر شده"),
+        ("rejected", "رد شده"),
+        ("paused", "متوقف شده"),
+        ("suspended", "تعلیق شده"),
+        ("archived", "بایگانی شده"),
     )
+
+    # Ownership
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="properties",
+        verbose_name="مالک",
+    )
+
     amenities = models.ManyToManyField(
         "Amenity", related_name="properties", blank=True, verbose_name="امکانات رفاهی"
     )
+
     # Identity
     title = models.CharField(max_length=150, verbose_name="عنوان")
-
     description = models.TextField(verbose_name="توضیحات")
-    property_type = models.CharField(
-        max_length=20, choices=PROPERTY_TYPE_CHOICES, verbose_name="نوع ملک"
+    accommodation_type = models.ForeignKey(
+        AccommodationType,
+        on_delete=models.PROTECT,
+        related_name="properties",
+        verbose_name="نوع اقامتگاه",
     )
 
     # Capacity & Physical Information
@@ -106,13 +198,11 @@ class Property(SluggedModel):
         validators=[MinValueValidator(1)], verbose_name="تعداد مهمان"
     )
     bedrooms = models.PositiveIntegerField(
-        validators=[MinValueValidator(1)], verbose_name="تعداد اتاق "
+        validators=[MinValueValidator(1)], verbose_name="تعداد اتاق"
     )
     beds = models.PositiveIntegerField(verbose_name="تعداد تخت")
     bathrooms = models.PositiveIntegerField(default=1, verbose_name="تعداد حمام")
-    toilets = models.PositiveIntegerField(
-        default=1, verbose_name="تعداد سرویس بهداشتی "
-    )
+    toilets = models.PositiveIntegerField(default=1, verbose_name="تعداد سرویس بهداشتی")
     building_area = models.DecimalField(
         max_digits=10, decimal_places=2, verbose_name="مساحت ساختمان"
     )
@@ -121,40 +211,31 @@ class Property(SluggedModel):
     )
     floor = models.IntegerField(default=1, verbose_name="طبقه")
 
-    # Ownership
-    # owner =
-
-    # Status
-    STATUS_CHOICES = (
-        ("draft", "پیش نویس"),
-        ("pending_review", "در انتظار برسی"),
-        ("published", "منتشر شده"),
-        ("rejected", "رد شده"),
-        ("paused", "متوقف شده"),
-        ("suspended", "تعلیق شده"),
-        ("archived", "بایگانی شده"),
+    # Price
+    nightly_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(0)],
+        verbose_name="قیمت هر شب",
     )
 
+    # Status
     status = models.CharField(
         max_length=30,
         choices=STATUS_CHOICES,
         default="draft",
+        db_index=True,
         verbose_name="وضعیت اقامتگاه",
     )
+    is_active = models.BooleanField(default=True, verbose_name="فعال")
     verification_status = models.CharField(
         max_length=20,
         choices=VerificationStatus.choices,
         default=VerificationStatus.UNVERIFIED,
         verbose_name="وضعیت تایید بازرس",
     )
-
-    # Timestamps
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="تاریخ ثبت")
-    updated_at = models.DateTimeField(
-        auto_now=True, verbose_name="تاریخ آخرین بروزرسانی"
-    )
     published_at = models.DateTimeField(
-        null=True, blank=True, verbose_name="تاریخ انتشار "
+        null=True, blank=True, verbose_name="تاریخ انتشار"
     )
 
     class Meta:
@@ -456,9 +537,11 @@ class PermissionRule(models.Model):
 
     class Meta:
         verbose_name = "مجوز قانون"
-        verbose_name_plural ="مجوز قوانین"
+        verbose_name_plural = "مجوز قوانین"
+
     def __str__(self):
         return f"{self.rule}"
+
 
 class TimeRule(models.Model):
     # Relation
@@ -475,10 +558,11 @@ class TimeRule(models.Model):
 
     class Meta:
         verbose_name = ""
-        verbose_name_plural =""
+        verbose_name_plural = ""
+
     def __str__(self):
         return f"{self.rule}"
-    
+
 
 class QuantityRule(models.Model):
     # Relation
@@ -496,10 +580,11 @@ class QuantityRule(models.Model):
 
     class Meta:
         verbose_name = "مجوز قانون"
-        verbose_name_plural ="مجوز قوانین"
+        verbose_name_plural = "مجوز قوانین"
+
     def __str__(self):
         return f"{self.rule}"
-    
+
 
 # ===================================================
 #               Cancellation Policies
@@ -592,7 +677,7 @@ class PropertyVerification(models.Model):
         null=True, blank=True, verbose_name="تاریخ و زمان تأیید"
     )
 
-    #verified_by
+    # verified_by
 
     # Rejection
     rejection_reason = models.TextField(
@@ -619,3 +704,47 @@ class PropertyVerification(models.Model):
 
     def __str__(self):
         return f"{self.property_obj}-{self.get_status_display()}"
+
+
+# ======================================================
+#
+# ======================================================
+class AttributeDefinition(TimeStampedModel):
+    code = models.SlugField(
+        max_length=10, unique=True, allow_unicode=False, verbose_name="شناسه پایدار"
+    )
+    is_active = models.BooleanField(default=True, verbose_name="فعال")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_attribute_definitions",
+        verbose_name="ایجاد کننده",
+    )
+
+    class Meta:
+        verbose_name = "تعریف ویژگی ها"
+        verbose_name_plural = "تعریف ویژگی ها"
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            original_code = (
+                type(self)
+                .objects.filter(pk=self.pk)
+                .values_list("code", flat=True)
+                .first()
+            )
+            if original_code is not None and original_code != self.code:
+                raise ValidationError(
+                    {"code": "شناسه پایدار ویژگی پس از ایجاد قابل تغییر نیست"}
+                )
+
+        if self.code != self.code.lower():
+            raise ValidationError(
+                {"code": "شناسه پایدار باید با حروف کوچک انگلیسی نوشته شود"}
+            )
+        return super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.code

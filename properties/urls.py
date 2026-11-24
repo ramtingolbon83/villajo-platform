@@ -11,6 +11,7 @@ from .views import (
     PropertyImageViewSet,
     PropertyLocationViewSet,
     PropertyRuleViewSet,
+    PropertyViewSet,
     ProvinceViewSet,
     QuantityRuleViewSet,
     RuralDistrictViewSet,
@@ -34,5 +35,6 @@ router.register("property-rules",PropertyRuleViewSet,basename="property-rule")
 router.register("permission-rules",PermissionRuleViewSet,basename="permission-rule")
 router.register("time-rules",TimeRuleViewSet,basename="time-rule")
 router.register("quantity-rules",QuantityRuleViewSet,basename="quantity-rule")
+router.register("", PropertyViewSet, basename="property")
 
 urlpatterns = router.urls
