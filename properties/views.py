@@ -1,9 +1,10 @@
-from rest_framework import status, viewsets
-from rest_framework.decorators import api_view
+from django.db.models import Q
+from rest_framework import viewsets
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticatedOrReadOnly
-from rest_framework.response import Response
 
+from accounts.models import Account
 from properties.models import (
     Amenity,
     Category,
@@ -21,7 +22,7 @@ from properties.models import (
     RuralDistrict,
     TimeRule,
 )
-from properties.permission import IsAdminOrReadOnly, IsPropertyOwnerOrReadOnly
+from properties.permission import IsAdminOrReadOnly, IsPropertyOwnerOrReadOnly, is_admin
 from properties.serializers import (
     AmenitySerializer,
     CategorySerializer,
@@ -44,59 +45,21 @@ from properties.serializers import (
 )
 
 
-@api_view(["GET"])
-def property_list(request):
-    if request.method == "GET":
-        properties = Property.objects.all()
-        serializer = PropertyListSerializer(properties, many=True)
-        return Response(serializer.data)
-
-
-@api_view(["POST"])
-def property_create(request):
-    if request.method == "POST":
-        serializer = PropertyCreateSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-@api_view(["GET", "PUT", "PATCH", "DELETE"])
-def property_detail(request, pk):
-    try:
-        properties = Property.objects.get(pk=pk)
-    except Property.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
-
-    if request.method == "GET":
-        serializer = PropertyDetailSerializer(properties)
-        return Response(serializer.data)
-
-    elif request.method == "PUT":
-        serializer = PropertyUpdateSerializer(properties, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    elif request.method == "PATCH":
-        serializer = PropertyUpdateSerializer(
-            properties, data=request.data, partial=True
-        )
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    elif request.method == "DELETE":
-        properties.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-
 class PropertyViewSet(viewsets.ModelViewSet):
-    queryset = Property.objects.prefetch_related("amenities")
-    permission_classes = (IsAdminOrReadOnly,)  # موقت تا آماده شدن owner
+    permission_classes = (IsAuthenticatedOrReadOnly, IsPropertyOwnerOrReadOnly)
+
+    def get_queryset(self):
+        queryset = Property.objects.prefetch_related("amenities")
+        user = self.request.user
+
+        if is_admin(user):
+            return queryset
+
+        # Public rule: only published AND active properties are visible
+        public = Q(status="published", is_active=True)
+        if user.is_authenticated and user.role == Account.Role.OWNER:
+            return queryset.filter(public | Q(owner=user))
+        return queryset.filter(public)
 
     def get_serializer_class(self):
         return {
@@ -104,6 +67,21 @@ class PropertyViewSet(viewsets.ModelViewSet):
             "retrieve": PropertyDetailSerializer,
             "create": PropertyCreateSerializer,
         }.get(self.action, PropertyUpdateSerializer)
+
+    def perform_create(self, serializer):
+        user = self.request.user
+
+        if user.role == Account.Role.OWNER:
+            # Any "owner" value sent by the client is ignored
+            serializer.save(owner=user)
+        elif is_admin(user):
+            if not serializer.validated_data.get("owner"):
+                raise ValidationError(
+                    {"owner": "Required when an admin creates a property."}
+                )
+            serializer.save()
+        else:
+            raise PermissionDenied("Only owners and admins can create properties.")
 
 
 class CountryViewSet(viewsets.ModelViewSet):
