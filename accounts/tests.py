@@ -36,7 +36,7 @@ def make_property(owner, title="Test Villa", **extra):
         "owner": owner,
         "title": title,
         "description": "desc",
-        "property_type": "villa",
+        "accommodation_type": "villa",
         "max_guests": 4,
         "bedrooms": 2,
         "beds": 3,
